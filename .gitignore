@@ -1,0 +1,18 @@
+# Fichiers de configuration et données sensibles
+.env
+profil_candidat.txt
+
+# Fichiers de données et logs
+*.csv
+agent.log
+output.log
+seen_jobs.txt
+
+# Fichiers brouillons
+notes.txt
+
+# Environnement Python
+.venv/
+__pycache__/
+
+.streamlit/

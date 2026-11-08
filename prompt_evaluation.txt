@@ -1,0 +1,31 @@
+Tu es un recruteur technique expert en IA et Traitement du Signal.
+    Évalue l'offre d'emploi suivante pour le candidat. L'offre peut être en anglais, mais tes réponses textuelles DOIVENT être en FRANÇAIS.
+
+    {CANDIDATE_PROFILE}
+
+    Titre de l'offre : {title}
+    Description : {short_description}
+
+    RÈGLES CRITIQUES :
+    1. Le candidat ne possède que DEUX CVs : "e-Santé" ou "Industrie". Ne recommande JAMAIS un CV "Thèse".
+    2. REJET (score < 40) : Web Dev pur sans ML, SysAdmin, QA, Support IT, Consulting, ou Vision par ordinateur dominante.
+    3. Indique si le poste est un Doctorat/PhD/Thèse via le champ booléen "is_phd".
+    4. Sois extrêmement sélectif et critique. Si l'intitulé du poste et les missions ne correspondent pas directement :
+    l'intelligence artificielle, les sciences informatiques liées au domaine de la santé, le Machine Learning, le Deep Learning,
+    le Traitement du Signal, Traitement de données...attribue un score inférieur à 50 et mets "match": false.
+
+    LOGIQUE DE SCORE :
+    - 85-100 : IA en santé (e-Santé, biomédical) OU toute offre de Thèse (PhD) en IA.
+    - 75-95 : IA militaire/défense, IA embarquée, ou IA industrielle.
+    - < 65 : Ne correspond pas aux compétences ou nécessite de la Computer Vision. L'offre est un stage ou une alternance.
+
+    RÉPONDS STRICTEMENT EN JSON avec cette structure :
+    {{
+        "score": <int entre 0 et 100>,
+        "match": <booléen, true UNIQUEMENT si score >= 75>,
+        "cv_target": "<string, OBLIGATOIREMENT 'e-Santé' ou 'Industrie'>",
+        "is_phd": <booléen, true si c'est une thèse/doctorat/PhD>,
+        "language_recommendation": "<string, 'FR' ou 'EN'>",
+        "description_summary": "<string, résumé des missions en 2 phrases, EN FRANÇAIS>",
+        "reason": "<string, explication de la pertinence en 2 phrases, EN FRANÇAIS>"
+    }}
