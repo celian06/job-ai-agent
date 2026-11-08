@@ -13,6 +13,7 @@ import urllib.request
 import sys
 import datetime
 from dotenv import load_dotenv
+import pymupdf
 
 log_file = open("agent.log", "a", encoding="utf-8", buffering=1)
 sys.stdout = log_file
@@ -35,6 +36,9 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
+CV_1_PATH = "cvs/cv-e-sante-celian-digiovanni-2026.pdf"
+CV_2_PATH = "cv-industrie-celian-digiovanni-2026.pdf"
+
 
 def load_candidate_profile(filepath="profil_candidat.txt"):
     try:
@@ -51,6 +55,20 @@ def load_prompt_template(filepath="prompt_evaluation.txt"):
         return file.read()
 
 PROMPT_TEMPLATE = load_prompt_template()
+
+def extract_text_from_pdf(pdf_path: str) -> str:
+    extracted_text = ""
+    try:
+        with pymupdf.open(pdf_path) as pdf_document:
+            for page in pdf_document:
+                extracted_text += page.get_text()
+        return extracted_text.strip()
+    except Exception as error:
+        print(f"Error reading PDF {pdf_path}: {error}")
+        return ""
+    
+CV_1_TEXT = extract_text_from_pdf(CV_1_PATH)
+CV_2_TEXT = extract_text_from_pdf(CV_2_PATH)
 
 def pre_filter_job(title: str, description: str) -> bool:
     """
@@ -190,6 +208,8 @@ def evaluate_job_offer(title: str, description: str) -> dict:
     # Injection dynamique des variables dans le texte à trous
     prompt = PROMPT_TEMPLATE.format(
         CANDIDATE_PROFILE=CANDIDATE_PROFILE,
+        CV_1=CV_1_TEXT,
+        CV_2=CV_2_TEXT,
         title=title,
         short_description=short_description
     )

@@ -16,3 +16,6 @@ notes.txt
 __pycache__/
 
 .streamlit/
+
+cvs/
+tests/
