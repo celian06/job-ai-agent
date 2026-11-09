@@ -401,7 +401,8 @@ def run_agent():
                 "Summary": summary,
                 "Reason": reason,
                 "Site": site_source,
-                "Status": "To Review"
+                "Status": "To Review",
+                "Full_Description": description
             }
             new_matches.append(match_item)
             # Enregistrement immédiat dans le CSV pour éviter de perdre les données
