@@ -37,7 +37,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
 CV_1_PATH = "cvs/cv-e-sante-celian-digiovanni-2026.pdf"
-CV_2_PATH = "cv-industrie-celian-digiovanni-2026.pdf"
+CV_2_PATH = "cvs/cv-industrie-celian-digiovanni-2026.pdf"
 
 
 def load_candidate_profile(filepath="profil_candidat.txt"):
