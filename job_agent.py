@@ -13,7 +13,6 @@ import urllib.request
 import sys
 import datetime
 from dotenv import load_dotenv
-import pymupdf
 
 log_file = open("agent.log", "a", encoding="utf-8", buffering=1)
 sys.stdout = log_file
@@ -25,7 +24,7 @@ print(f"========================================")
 
 CSV_FILE = "job_offers.csv"
 SEEN_FILE = "seen_jobs.txt"
-MODEL_NAME = "qwen2.5-coder:1.5b"
+MODEL_NAME = "qwen2.5:3b"
 
 load_dotenv()
 
@@ -36,39 +35,11 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
-CV_1_PATH = "cvs/cv-e-sante-celian-digiovanni-2026.pdf"
-CV_2_PATH = "cvs/cv-industrie-celian-digiovanni-2026.pdf"
-
-
-def load_candidate_profile(filepath="profil_candidat.txt"):
-    try:
-        with open(filepath, "r", encoding="utf-8") as file:
-            return file.read()
-    except FileNotFoundError:
-        print(f"Erreur : Le fichier {filepath} est introuvable.")
-        return ""
-
-CANDIDATE_PROFILE = load_candidate_profile()
-
 def load_prompt_template(filepath="prompt_evaluation.txt"):
     with open(filepath, "r", encoding="utf-8") as file:
         return file.read()
 
 PROMPT_TEMPLATE = load_prompt_template()
-
-def extract_text_from_pdf(pdf_path: str) -> str:
-    extracted_text = ""
-    try:
-        with pymupdf.open(pdf_path) as pdf_document:
-            for page in pdf_document:
-                extracted_text += page.get_text()
-        return extracted_text.strip()
-    except Exception as error:
-        print(f"Error reading PDF {pdf_path}: {error}")
-        return ""
-    
-CV_1_TEXT = extract_text_from_pdf(CV_1_PATH)
-CV_2_TEXT = extract_text_from_pdf(CV_2_PATH)
 
 def pre_filter_job(title: str, description: str) -> bool:
     """
@@ -78,7 +49,7 @@ def pre_filter_job(title: str, description: str) -> bool:
     text = (title + " " + description).lower()
     
     # 1. Élimination du bruit (les faux positifs du scraper)
-    bad_keywords = ["infirmier", "médecin", "aide-soignant", "pharmacien", "comptable", "manutentionnaire", "react", "angular", "développeur web"]
+    bad_keywords = ["infirmier", "médecin", "aide-soignant", "pharmacien", "comptable", "manutentionnaire", "react", "angular", "développeur web", "stage", "alternance", "apprentissage", "apprenti", "internship"]
     if any(bad in text for bad in bad_keywords):
         return False
         
@@ -92,35 +63,29 @@ def pre_filter_job(title: str, description: str) -> bool:
     
     data_it_keywords = ["traitement de données", "data processing", "base de données", "database", "sql", "data scientist", "data engineer", "développement logiciel", "software", "informatique"]
 
-    # --- APPLICATION DE LA LOGIQUE ---
-
     # Cas A : Les thèses passent toujours la barrière du pré-filtre
     if any(kw in text for kw in phd_keywords):
         return True
         
-    # Évaluation des présences
+    # Cas B : Domaine de la Santé -> Souplesse
     is_health = any(kw in text for kw in health_keywords)
     has_python = python_keyword in text
     has_ai_signal = any(kw in text for kw in ai_signal_keywords)
     has_data_it = any(kw in text for kw in data_it_keywords)
 
-    # Cas B : Domaine de la Santé -> Souplesse
-    # On accepte si ça touche à Python, à la Data, ou à l'IA.
     if is_health:
         if has_python or has_data_it or has_ai_signal:
             return True
             
-    # Cas C : Autres domaines (Défense, Industrie, etc.) -> Stricte
-    # Il FAUT Python ET des compétences dures en IA/Signal.
+    # Cas C : Autres domaines -> Stricte
     if not is_health:
         if has_python and has_ai_signal:
             return True
             
-    # Si l'offre ne rentre dans aucune de ces cases, on la rejette instantanément (0.001s)
     return False
 
 def save_single_match(match_data: dict):
-    """Enregistre une offre validée instantanément dans le CSV sans attendre la fin du script."""
+    """Enregistre une offre validée instantanément dans le CSV."""
     df_new = pd.DataFrame([match_data])
     if os.path.exists(CSV_FILE):
         try:
@@ -136,7 +101,6 @@ def send_email_notification(matches: list):
     matches_count = len(matches)
     subject = f"AI Job Agent: {matches_count} nouvelle(s) offre(s) retenue(s)"
 
-    # Séparation basée sur le domaine (CV) et le type de poste (Thèse)
     theses = [job for job in matches if job.get('Is_PhD', False)]
     esante = [job for job in matches if job['Recommended_CV'] == 'e-Santé' and not job.get('Is_PhD', False)]
     industries = [job for job in matches if job['Recommended_CV'] == 'Industrie' and not job.get('Is_PhD', False)]
@@ -177,7 +141,7 @@ def send_email_notification(matches: list):
     except Exception as e:
         print(f"Erreur lors de l'envoi de l'email via iCloud: {e}")
 
-def unload_ollama_model(model_name: str = "qwen2.5-coder:1.5b"):
+def unload_ollama_model(model_name: str = MODEL_NAME):
     try:
         url = "http://localhost:11434/api/generate"
         data = json.dumps({"model": model_name, "keep_alive": 0}).encode("utf-8")
@@ -205,20 +169,18 @@ def ensure_ollama_running():
 def evaluate_job_offer(title: str, description: str) -> dict:
     short_description = description[:1200]
 
-    # Injection dynamique des variables dans le texte à trous
-    prompt = PROMPT_TEMPLATE.format(
-        CANDIDATE_PROFILE=CANDIDATE_PROFILE,
-        CV_1=CV_1_TEXT,
-        CV_2=CV_2_TEXT,
-        title=title,
-        short_description=short_description
-    )
+    # Use replace instead of format to avoid conflicts with JSON curly braces
+    prompt = PROMPT_TEMPLATE.replace("{title}", title).replace("{short_description}", short_description)
 
     response = ollama.chat(
         model=MODEL_NAME,
         messages=[{"role": "user", "content": prompt}],
         format="json",
-        keep_alive=0
+        keep_alive=0,
+        options={
+            "temperature": 0.0,
+            "top_p": 0.1
+        }
     )
 
     try:
@@ -240,23 +202,15 @@ def evaluate_job_offer(title: str, description: str) -> dict:
             "is_phd": False, 
             "language_recommendation": "FR", 
             "description_summary": "", 
-            "reason": "Erreur JSON"
+            "reason": "JSON Error"
         }
 
 def fetch_filtered_jobs():
-    """Récupère les offres d'emploi uniquement depuis LinkedIn et Indeed (France) sur 2 mois."""
     print("Scraping d'offres multi-requêtes depuis LinkedIn et Indeed (France)...")
-    
     search_queries = [
-        "Machine Learning",
-        "Deep Learning",
-        "Signal Processing",
-        "AI Engineer",
-        "Phd",
-        "Intelligence Artificielle Santé",
-        "Classification",
-        "Traitement du Signal",
-        "Traitement de données"
+        "Machine Learning", "Deep Learning", "Signal Processing",
+        "AI Engineer", "Phd", "Intelligence Artificielle Santé",
+        "Classification", "Traitement du Signal", "Traitement de données"
     ]
     
     all_jobs = []
@@ -284,37 +238,27 @@ def fetch_filtered_jobs():
     return pd.DataFrame()
 
 def is_system_busy() -> bool:
-    heavy_apps = [
-        "rocket league",
-        "destiny 2",
-        "witcher 3"
-    ]
-    
+    heavy_apps = ["rocket league", "destiny 2", "witcher 3"]
     try:
         cmd = 'powershell "Get-Process | Where-Object {$_.MainWindowTitle -ne \'\'} | Select-Object -ExpandProperty MainWindowTitle"'
         output = subprocess.check_output(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
         windows_titles = output.decode("utf-8", errors="ignore").lower()
-        
         for app in heavy_apps:
             if app in windows_titles:
                 return True
         return False
-        
     except Exception as e:
         print(f"Erreur lors de la verification des fenetres : {e}")
         return False
 
 def run_agent():
-
     if is_system_busy():
         print("Systeme occupe (jeu ou logiciel lourd en cours).", file=sys.__stdout__)
         print("L'agent se met en veille pour eviter les ralentissements. Execution reportee.")
         return
 
     ensure_ollama_running()
-
     print("Recherche des offres en cours sur LinkedIn et Indeed...", file=sys.__stdout__)
-    
     jobs_df = fetch_filtered_jobs()
 
     if jobs_df.empty:
@@ -328,9 +272,7 @@ def run_agent():
         with open(SEEN_FILE, "r", encoding="utf-8") as f:
             seen_urls = set(line.strip() for line in f)
 
-    # --- PHASE 1 : Pre-filtrage ---
     jobs_to_evaluate = []
-    
     for idx, row in jobs_df.iterrows():
         job_url = str(row.get("job_url", ""))
         title = str(row.get("title", ""))
@@ -354,9 +296,7 @@ def run_agent():
         unload_ollama_model()
         return
 
-    # --- PHASE 2 : Analyse IA ---
     new_matches = []
-
     for row in jobs_to_evaluate:
         job_url = str(row.get("job_url", ""))
         title = str(row.get("title", ""))
@@ -405,7 +345,6 @@ def run_agent():
                 "Full_Description": description
             }
             new_matches.append(match_item)
-            # Enregistrement immédiat dans le CSV pour éviter de perdre les données
             save_single_match(match_item)
 
     if new_matches:

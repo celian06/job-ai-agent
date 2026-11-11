@@ -1,37 +1,32 @@
-Tu es un recruteur technique expert en IA et Traitement du Signal.
-Évalue l'offre d'emploi suivante pour le candidat. L'offre peut être en anglais, mais tes réponses textuelles DOIVENT être en FRANÇAIS.
+Tu es un recruteur technique froid et analytique.
+Évalue l'adéquation entre l'offre d'emploi ci-dessous et les profils du candidat.
+N'invente aucune information. Renvoie uniquement un JSON valide.
 
-{CANDIDATE_PROFILE}
+RÈGLES DE REJET STRICT (match: false) :
+1. Rejette systématiquement l'offre (match: false) s'il s'agit d'un stage, d'une alternance, d'un apprentissage ou d'un job étudiant.
+2. Pour les offres dans le domaine de la santé/médical, rejette systématiquement l'offre si elle ne requiert pas explicitement des compétences techniques en Data Science, Intelligence Artificielle (Machine/Deep Learning) ou Traitement du Signal.
 
-CV 1 (Domaine e-Santé / Recherche) :
-{CV_1}
+RÈGLE STRICTE DE SÉLECTION DU CV ("cv_target") :
+- "e-Santé" : UNIQUEMENT si l'offre concerne la santé/médical ET valide la règle de rejet n°2 (présence de Data/IA/Signal).
+- "Industrie" : Pour TOUTES les autres offres (IA générale, Machine Learning, Logiciel, Défense, Tech, Data Science, etc.). Si le domaine médical n'est pas explicitement au cœur du poste, tu DOIS choisir "Industrie".
 
-CV 2 (Domaine Industrie / Hardware / Défense) :
-{CV_2}
-
-Titre de l'offre : {title}
+OFFRE :
+Titre : {title}
 Description : {short_description}
 
-RÈGLES CRITIQUES :
-1. Le candidat ne possède que DEUX CVs : "e-Santé" ou "Industrie". Ne recommande JAMAIS un CV "Thèse".
-2. REJET (score < 40) : Web Dev pur sans ML, SysAdmin, QA, Support IT, Consulting, ou Vision par ordinateur dominante.
-3. Indique si le poste est un Doctorat/PhD/Thèse via le champ booléen "is_phd".
-4. Sois extrêmement sélectif et critique. Si l'intitulé du poste et les missions ne correspondent pas directement :
-l'intelligence artificielle, les sciences informatiques liées au domaine de la santé, le Machine Learning, le Deep Learning,
-le Traitement du Signal, Traitement de données...attribue un score inférieur à 50 et mets "match": false.
+Consignes :
+1. Résume factuellement les missions principales (description_summary).
+2. Détermine si l'offre correspond au profil (match : true/false) en appliquant les RÈGLES DE REJET STRICT.
+3. Applique la règle stricte pour déterminer "cv_target" ("e-Santé" ou "Industrie").
+4. Indique si c'est une offre de thèse/doctorat (is_phd : true/false).
 
-LOGIQUE DE SCORE :
-- 85-100 : IA en santé (e-Santé, biomédical) OU toute offre de Thèse (PhD) en IA.
-- 75-95 : IA militaire/défense, IA embarquée, ou IA industrielle.
-- < 65 : Ne correspond pas aux compétences ou nécessite de la Computer Vision. L'offre est un stage ou une alternance.
-
-RÉPONDS STRICTEMENT EN JSON avec cette structure :
-{{
-    "score": <int entre 0 et 100>,
-    "match": <booléen, true UNIQUEMENT si score >= 75>,
-    "cv_target": "<string, OBLIGATOIREMENT 'e-Santé' ou 'Industrie'>",
-    "is_phd": <booléen, true si c'est une thèse/doctorat/PhD>,
-    "language_recommendation": "<string, 'FR' ou 'EN'>",
-    "description_summary": "<string, résumé des missions en 2 phrases, EN FRANÇAIS>",
-    "reason": "<string, explication de la pertinence en 2 phrases, EN FRANÇAIS>"
-}}
+Format JSON attendu (respecte scrupuleusement les types) :
+{
+  "score": 75,
+  "match": true,
+  "cv_target": "VALEUR_ICI",
+  "is_phd": false,
+  "language_recommendation": "FR",
+  "description_summary": "Résumé concis des missions.",
+  "reason": "Explication courte du choix."
+}

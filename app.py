@@ -64,10 +64,18 @@ Consignes :
         return f"Erreur de formatage dans prompt_lettre.txt : variable manquante {e}"
 
     try:
+        # Appel strict à llama3.2 avec séparation du système et de l'utilisateur
         response = ollama.chat(
-            model="qwen2.5-coder:1.5b",
-            messages=[{"role": "user", "content": formatted_prompt}],
-            keep_alive=0
+            model="llama3.2",
+            messages=[
+                {"role": "system", "content": "Tu es un expert en recrutement. Rédige une lettre factuelle, professionnelle, sans inventer d'expériences. N'argumente pas tes choix, donne uniquement la lettre finale."},
+                {"role": "user", "content": formatted_prompt}
+            ],
+            keep_alive=0,
+            options={
+                "temperature": 0.0,
+                "top_p": 0.1
+            }
         )
         return response['message']['content']
     except Exception as e:
@@ -200,7 +208,7 @@ else:
                             
                             # Bouton pour déclencher la rédaction et la conversion en Word
                             if st.button("Générer la lettre Word", key=f"btn_letter_{idx}"):
-                                with st.spinner("Qwen rédige et formate votre lettre en Word (.docx)..."):
+                                with st.spinner("Llama 3.2 rédige et formate votre lettre en Word (.docx)..."):
                                     try:
                                         with open("profil_candidat.txt", "r", encoding="utf-8") as f:
                                             profile_text = f.read()
@@ -213,7 +221,7 @@ else:
                                     else:
                                         selected_cv_text = CV_2_TEXT
                                         
-                                    # Gestion de la description complète ou du résumé (avec rétrocompatibilité)
+                                    # Gestion de la description complète ou du résumé
                                     full_desc = row.get('Full_Description', '')
                                     if pd.isna(full_desc) or str(full_desc).strip() == "":
                                         texte_offre_pour_lettre = row.get('Summary', '')
